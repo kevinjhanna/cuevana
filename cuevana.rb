@@ -7,77 +7,68 @@
 require 'nokogiri'
 require 'open-uri'
 require 'net/http'
+require 'logger'
 
 class Cuevana
-  attr_reader :lastPage
-  URL = "http://www.cuevana.tv"
+  URL         = "http://www.cuevana.tv"
   MOVIES_LIST = "/peliculas/lista/page="
-  SOURCE_GET = "/player/source_get"
-  SOURCE = "/player/source?"
-  
+  SOURCE_GET  = "/player/source_get"
+  SOURCE      = "/player/source?"
 
-  def initialize
-    @last_page = extract_last_page()
+  def logger
+    @logger ||= Logger.new $stderr
   end
-  
-  def print_movies(from = 1, to = @last_page)
-    from.upto(to) do |pageNo|
-      $stdout.puts "Page Number: #{pageNo}"
-    
-      $stdout.flush
-  
-      movies = extract_movies(pageNo)
-      break if movies.nil? || movies.empty?
-  
-      movies.each do |movie|
-        $stdout.puts "#{extract_title(movie)}"
-      
-        extract_sources(movie).each do |source|
-          key, host = source.to_s.slice(/\'.*\'/).gsub(/\'/, "").split(/,/)
-          $stdout.puts "#{extract_download_link(key, host)}\n\n"
-        end
-        $stdout.flush
+
+  def movies(from = 1, to = @last_page)
+    (from..to).map do |pageNo|
+      logger.info "Page Number: #{pageNo}"
+      (dom_for_movies(pageNo) || []).map { |movie_dom| Movie.new(movie_dom) }
+    end.flatten.compact
+  end
+
+  def dom_for_movies(pageNo)
+    source = open("#{URL}#{MOVIES_LIST}#{pageNo}").read.force_encoding("utf-8")
+    Nokogiri::HTML(source).xpath("//table//tr[@class != 'tabletit']")
+  end
+  private :dom_for_movies
+
+  class Movie < Struct.new(:dom)
+    def title
+      @title ||= dom.at_css('.tit a').content
+    end
+
+    def links
+      @links ||= sources.map do |source|
+        key, host = source.to_s.slice(/\'.*\'/).gsub(/\'/, "").split(/,/)
+        download_link(key, host)
       end
     end
+
+    def to_s
+      links_str = links.map { |link| " * #{link}" }.join("\n")
+      "#{title}\n#{links_str}"
+    end
+
+    def page_id
+      @page_id ||= dom.at_css('.tit a @href').content.split('/')[2]
+    end
+    private :page_id
+
+    def sources
+      source = open("#{URL}#{SOURCE}&id=#{page_id}&subs=,ES&onstart=yes&sub_pre=ES").read.force_encoding("utf-8")
+      Nokogiri::HTML(source).css("html body div div div#sources ul script")
+    end
+    private :sources
+
+    def download_link(key, host)
+      uri = URI("#{URL}#{SOURCE_GET}")
+      res = Net::HTTP.post_form(uri, 'key' => key, 'host' => host) # POST
+      res.body.gsub(/[^a-zA-Z0-9\/\.\&\?=:]/, "") # from ascii to utf-8 compatibility
+    end
+    private :download_link
   end
-  
-  def extract_last_page
-    movies_url = URL + MOVIES_LIST +"0"
-    doc = Nokogiri::HTML(open(movies_url).read.force_encoding("utf-8"))
-    doc.at_xpath("/html/body/div/div[9]/span/a[6]").content.to_i
-  end
-  
-  def extract_title(movie)
-    movie.at_css('.tit a').content
-  end
-  
-  def extract_id(movie)
-    movie.at_css('.tit a @href').content.split('/')[2]
-  end
-  
-  def extract_sources(movie)
-    player_params = "&id=#{extract_id(movie)}&subs=,ES&onstart=yes&sub_pre=ES"
-    player_link = URL + SOURCE + player_params
-    player = Nokogiri::HTML(open(player_link).read.force_encoding("utf-8"))
-    player.css("html body div div div#sources ul script")
-  end
-  
-  # returns an array of html tags that represents a movie
-  def extract_movies(pageNo)
-    movies_url = URL + MOVIES_LIST + pageNo.to_s
-    doc = Nokogiri::HTML(open(movies_url).read.force_encoding("utf-8"))
-    doc.xpath("//table//tr[@class != 'tabletit']")
-  end
-  
-  def extract_download_link(key, host)
-    # Uses a POST method
-    uri = URI(URL + SOURCE_GET)
-    res = Net::HTTP.post_form(uri, 'key' => key, 'host' => host)
-    # from ascii to utf-8 compatibility
-    res.body.gsub(/[^a-zA-Z0-9\/\.\&\?=:]/, "") 
-  end
-  
 end
 
-c = Cuevana.new
-c.print_movies(3,4)
+Cuevana.new.movies(3, 4).each do |movie|
+  puts movie
+end
