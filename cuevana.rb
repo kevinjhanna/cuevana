@@ -42,7 +42,7 @@ class Cuevana
   end
   
   def extract_last_page
-    movies_url = @@URL + @@MOVIES_LIST +"0"
+    movies_url = URL + MOVIES_LIST +"0"
     doc = Nokogiri::HTML(open(movies_url).read.force_encoding("utf-8"))
     doc.at_xpath("/html/body/div/div[9]/span/a[6]").content.to_i
   end
@@ -57,21 +57,21 @@ class Cuevana
   
   def extract_sources(movie)
     player_params = "&id=#{extract_id(movie)}&subs=,ES&onstart=yes&sub_pre=ES"
-    player_link = @@URL + @@SOURCE + player_params
+    player_link = URL + SOURCE + player_params
     player = Nokogiri::HTML(open(player_link).read.force_encoding("utf-8"))
     player.css("html body div div div#sources ul script")
   end
   
   # returns an array of html tags that represents a movie
   def extract_movies(pageNo)
-    movies_url = @@URL + @@MOVIES_LIST + pageNo.to_s
+    movies_url = URL + MOVIES_LIST + pageNo.to_s
     doc = Nokogiri::HTML(open(movies_url).read.force_encoding("utf-8"))
     doc.xpath("//table//tr[@class != 'tabletit']")
   end
   
   def extract_download_link(key, host)
     # Uses a POST method
-    uri = URI(@@URL + @@SOURCE_GET)
+    uri = URI(URL + SOURCE_GET)
     res = Net::HTTP.post_form(uri, 'key' => key, 'host' => host)
     # from ascii to utf-8 compatibility
     res.body.gsub(/[^a-zA-Z0-9\/\.\&\?=:]/, "") 
