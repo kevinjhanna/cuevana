@@ -10,10 +10,10 @@ require 'net/http'
 
 class Cuevana
   attr_reader :lastPage
-  @@URL = "http://www.cuevana.tv"
-  @@MOVIES_LIST = "/peliculas/lista/page="
-  @@SOURCE_GET = "/player/source_get"
-  @@SOURCE = "/player/source?"
+  URL = "http://www.cuevana.tv"
+  MOVIES_LIST = "/peliculas/lista/page="
+  SOURCE_GET = "/player/source_get"
+  SOURCE = "/player/source?"
   
 
   def initialize
