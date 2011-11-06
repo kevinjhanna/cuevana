@@ -19,7 +19,7 @@ class Cuevana
     @logger ||= Logger.new $stderr
   end
 
-  def movies(from = 1, to = @last_page)
+  def movies(from = 1, to = last_page)
     (from..to).map do |pageNo|
       logger.info "Page Number: #{pageNo}"
       (dom_for_movies(pageNo) || []).map { |movie_dom| Movie.new(movie_dom) }
@@ -31,7 +31,13 @@ class Cuevana
     Nokogiri::HTML(source).xpath("//table//tr[@class != 'tabletit']")
   end
   private :dom_for_movies
-
+  
+  def last_page
+    source = open("#{URL}#{MOVIES_LIST}0").read.force_encoding("utf-8")
+    doc = Nokogiri::HTML(source)
+    doc.at_xpath("/html/body/div/div[9]/span/a[6]").content.to_i
+  end
+  
   class Movie < Struct.new(:dom)
     def title
       @title ||= dom.at_css('.tit a').content
@@ -69,6 +75,6 @@ class Cuevana
   end
 end
 
-Cuevana.new.movies(3, 4).each do |movie|
+Cuevana.new.movies().each do |movie|
   puts movie
 end
