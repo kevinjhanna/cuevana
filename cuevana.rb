@@ -10,24 +10,33 @@ require 'net/http'
 require 'logger'
 
 class Cuevana
-  URL         = "http://www.cuevana.tv"
-  MOVIES_LIST = "/peliculas/lista/page="
-  SOURCE_GET  = "/player/source_get"
-  SOURCE      = "/player/source?"
+  URL           = "http://www.cuevana.tv"
+  ALL_MOVIES   = "/peliculas/lista/page="
+  LATEST_MOVIES = "/peliculas/?page="
+  SOURCE_GET    = "/player/source_get"
+  SOURCE        = "/player/source?"
 
   def logger
     @logger ||= Logger.new $stderr
   end
 
-  def movies(from = 1, to = last_page)
-    (from..to).map do |pageNo|
-      logger.info "Page Number: #{pageNo}"
-      (dom_for_movies(pageNo) || []).map { |movie_dom| Movie.new(movie_dom) }
-    end.flatten.compact
+  def all_movies(from = 1, to = last_page)
+    movies(ALL_MOVIES, from, to)
   end
 
-  def dom_for_movies(pageNo)
-    source = open("#{URL}#{MOVIES_LIST}#{pageNo}").read.force_encoding("utf-8")
+  def latest_movies()
+    movies(LATEST_MOVIES, 1, 4)
+  end
+  
+  def movies(url, from, to)
+    (from..to).map do |pageNo|
+      logger.info "Page Number: #{pageNo}"
+      (dom_for_movies(pageNo, url) || []).map { |movie_dom| Movie.new(movie_dom) }
+    end.flatten.compact
+  end
+  
+  def dom_for_movies(pageNo, url)
+    source = open("#{URL}#{url}#{pageNo}").read.force_encoding("utf-8")
     Nokogiri::HTML(source).xpath("//table//tr[@class != 'tabletit']")
   end
   private :dom_for_movies
@@ -75,6 +84,6 @@ class Cuevana
   end
 end
 
-Cuevana.new.movies().each do |movie|
+Cuevana.new.latest_movies().each do |movie|
   puts movie
 end
