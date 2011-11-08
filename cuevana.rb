@@ -11,7 +11,7 @@ require 'logger'
 
 class Cuevana
   URL           = "http://www.cuevana.tv"
-  ALL_MOVIES   = "/peliculas/lista/page="
+  ALL_MOVIES    = "/peliculas/lista/page="
   LATEST_MOVIES = "/peliculas/?page="
   SOURCE_GET    = "/player/source_get"
   SOURCE        = "/player/source?"
@@ -24,7 +24,7 @@ class Cuevana
     movies(ALL_MOVIES, from, to)
   end
 
-  def latest_movies()
+  def latest_movies
     movies(LATEST_MOVIES, 1, 4)
   end
   
